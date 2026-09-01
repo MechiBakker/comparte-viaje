@@ -9,6 +9,7 @@ const initialState = {
   departure_date: '',
   seats_total: 3,
   price_per_seat: 0,
+  payment_method: 'efectivo',
   description: '',
 };
 
@@ -97,16 +98,29 @@ export default function CreateTrip() {
           </label>
         </div>
 
-        <label>
-          Precio por persona (opcional)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.price_per_seat}
-            onChange={(e) => update('price_per_seat', e.target.value)}
-          />
-        </label>
+        <div className="form__row">
+          <label>
+            Precio por persona (opcional)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.price_per_seat}
+              onChange={(e) => update('price_per_seat', e.target.value)}
+            />
+          </label>
+          <label>
+            Medio de pago
+            <select
+              value={form.payment_method}
+              onChange={(e) => update('payment_method', e.target.value)}
+            >
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="ambos">Efectivo o transferencia</option>
+            </select>
+          </label>
+        </div>
 
         <label>
           Descripción

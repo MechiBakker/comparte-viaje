@@ -8,6 +8,12 @@ const dateFormatter = new Intl.DateTimeFormat('es-AR', {
   minute: '2-digit',
 });
 
+const PAYMENT_LABELS = {
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  ambos: 'Efectivo o transferencia',
+};
+
 export default function TripCard({ trip }) {
   return (
     <Link to={`/viajes/${trip.id}`} className="trip-card">
@@ -31,6 +37,8 @@ export default function TripCard({ trip }) {
             <span>${trip.price_per_seat} / persona</span>
           </>
         )}
+        <span>·</span>
+        <span>{PAYMENT_LABELS[trip.payment_method] || 'Efectivo'}</span>
       </div>
 
       {trip.profiles?.name && (

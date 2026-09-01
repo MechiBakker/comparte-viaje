@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
+const PAYMENT_METHODS = ['efectivo', 'transferencia', 'ambos'];
 
 // GET /api/trips?origin=&destination=&date=
 // Búsqueda pública de viajes activos.
@@ -87,11 +88,24 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 // POST /api/trips -> publicar un viaje
 router.post('/', requireAuth, async (req, res) => {
-  const { title, origin, destination, departure_date, seats_total, price_per_seat, description } =
-    req.body;
+  const {
+    title,
+    origin,
+    destination,
+    departure_date,
+    seats_total,
+    price_per_seat,
+    description,
+    payment_method,
+  } = req.body;
 
   if (!title || !origin || !destination || !departure_date || !seats_total) {
     return res.status(400).json({ error: 'Faltan campos obligatorios.' });
+  }
+
+  const method = payment_method || 'efectivo';
+  if (!PAYMENT_METHODS.includes(method)) {
+    return res.status(400).json({ error: 'Medio de pago inválido.' });
   }
 
   const { data, error } = await supabase
@@ -106,6 +120,7 @@ router.post('/', requireAuth, async (req, res) => {
       seats_available: seats_total,
       price_per_seat: price_per_seat || 0,
       description,
+      payment_method: method,
     })
     .select()
     .single();

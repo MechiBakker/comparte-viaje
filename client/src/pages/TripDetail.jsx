@@ -2,21 +2,23 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
-import ExpenseList from '../components/ExpenseList';
 
 const dateFormatter = new Intl.DateTimeFormat('es-AR', {
   dateStyle: 'full',
   timeStyle: 'short',
 });
 
+const PAYMENT_LABELS = {
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  ambos: 'Efectivo o transferencia',
+};
+
 export default function TripDetail() {
   const { id } = useParams();
   const { authenticated } = useAuth();
 
   const [trip, setTrip] = useState(null);
-  const [expenses, setExpenses] = useState([]);
-  const [balance, setBalance] = useState(null);
-  const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,15 +27,6 @@ export default function TripDetail() {
     try {
       const tripData = await api.getTrip(id);
       setTrip(tripData);
-
-      if (authenticated) {
-        const [expensesData, balanceData] = await Promise.all([
-          api.getExpenses(id),
-          api.getBalance(id),
-        ]);
-        setExpenses(expensesData);
-        setBalance(balanceData);
-      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,33 +48,12 @@ export default function TripDetail() {
     }
   }
 
-  async function handleAddExpense(e) {
-    e.preventDefault();
-    try {
-      await api.addExpense(id, {
-        description: expenseForm.description,
-        amount: Number(expenseForm.amount),
-      });
-      setExpenseForm({ description: '', amount: '' });
-      loadAll();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
   if (loading) return <div className="page-loading">Cargando viaje…</div>;
   if (!trip) return <div className="error-banner">Viaje no encontrado.</div>;
 
-  const participantNames = {
-    [trip.driver_id]: trip.profiles?.name || 'Conductor',
-    ...(trip.participants || []).reduce(
-      (acc, p) => ({ ...acc, [p.user_id]: p.profiles?.name || p.user_id }),
-      {}
-    ),
-  };
-
   const confirmedParticipants = (trip.participants || []).filter((p) => p.status === 'confirmed');
   const hasDriverContact = Boolean(trip.profiles?.email);
+  const paymentLabel = PAYMENT_LABELS[trip.payment_method] || 'Efectivo';
 
   return (
     <div className="page page--narrow">
@@ -103,6 +75,10 @@ export default function TripDetail() {
         <div>
           <span className="stat-value">${trip.price_per_seat || 0}</span>
           <span className="stat-label">por persona</span>
+        </div>
+        <div>
+          <span className="stat-value">{paymentLabel}</span>
+          <span className="stat-label">medio de pago</span>
         </div>
         <div>
           <span className="stat-value">{trip.profiles?.name || '—'}</span>
@@ -141,43 +117,10 @@ export default function TripDetail() {
               ))}
             </div>
           )}
-
-          <section className="section">
-            <h2>Gastos del viaje</h2>
-
-            <form className="form form--inline" onSubmit={handleAddExpense}>
-              <input
-                required
-                placeholder="Descripción (ej: nafta, peaje)"
-                value={expenseForm.description}
-                onChange={(e) =>
-                  setExpenseForm((f) => ({ ...f, description: e.target.value }))
-                }
-              />
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Monto"
-                value={expenseForm.amount}
-                onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
-              />
-              <button type="submit" className="btn btn--secondary">
-                Agregar gasto
-              </button>
-            </form>
-
-            <ExpenseList
-              expenses={expenses}
-              balance={balance}
-              participantNames={participantNames}
-            />
-          </section>
         </>
       ) : (
         <div className="callout">
-          <p>Iniciá sesión para reservar tu lugar y ver los gastos compartidos.</p>
+          <p>Iniciá sesión para reservar tu lugar.</p>
           <Link to="/ingresar" className="btn btn--primary">
             Ingresar
           </Link>
