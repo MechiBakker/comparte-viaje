@@ -49,10 +49,13 @@ router.get('/mine', requireAuth, async (req, res) => {
 });
 
 // GET /api/trips/:id
+// El email y teléfono de contacto (conductor y pasajeros) solo se
+// devuelven si quien pregunta es el conductor o un pasajero
+// confirmado de ESTE viaje. Cualquier otro visitante ve solo nombres.
 router.get('/:id', optionalAuth, async (req, res) => {
   const { data: trip, error } = await supabase
     .from('trips')
-    .select('*, profiles!trips_driver_id_fkey(name, email)')
+    .select('*, profiles!trips_driver_id_fkey(name, email, phone)')
     .eq('id', req.params.id)
     .single();
 
@@ -60,10 +63,26 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
   const { data: participants } = await supabase
     .from('trip_participants')
-    .select('*, profiles(name, email)')
+    .select('*, profiles(name, email, phone)')
     .eq('trip_id', req.params.id);
 
-  res.json({ ...trip, participants });
+  const isDriver = req.user?.id === trip.driver_id;
+  const isConfirmedParticipant = (participants || []).some(
+    (p) => p.user_id === req.user?.id && p.status === 'confirmed'
+  );
+  const canSeeContactInfo = isDriver || isConfirmedParticipant;
+
+  function stripContact(profile) {
+    if (!profile) return profile;
+    return canSeeContactInfo ? profile : { name: profile.name };
+  }
+
+  const participantsOut = (participants || []).map((p) => ({
+    ...p,
+    profiles: stripContact(p.profiles),
+  }));
+
+  res.json({ ...trip, profiles: stripContact(trip.profiles), participants: participantsOut });
 });
 
 // POST /api/trips -> publicar un viaje

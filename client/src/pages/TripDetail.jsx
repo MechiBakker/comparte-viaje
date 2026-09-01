@@ -80,6 +80,9 @@ export default function TripDetail() {
     ),
   };
 
+  const confirmedParticipants = (trip.participants || []).filter((p) => p.status === 'confirmed');
+  const hasDriverContact = Boolean(trip.profiles?.email);
+
   return (
     <div className="page page--narrow">
       <div className="trip-detail__header">
@@ -115,6 +118,28 @@ export default function TripDetail() {
             <button className="btn btn--primary" onClick={handleJoin}>
               Reservar lugar
             </button>
+          )}
+
+          {hasDriverContact && (
+            <div className="contact-card">
+              <h4>Contacto del conductor/a</h4>
+              <p>{trip.profiles.name}</p>
+              <p>{trip.profiles.email}</p>
+              {trip.profiles.phone && <p>{trip.profiles.phone}</p>}
+            </div>
+          )}
+
+          {confirmedParticipants.some((p) => p.profiles?.email) && (
+            <div className="contact-card">
+              <h4>Pasajeros confirmados</h4>
+              {confirmedParticipants.map((p) => (
+                <div key={p.id} className="contact-card__row">
+                  <strong>{p.profiles?.name || 'Pasajero/a'}</strong>
+                  {p.profiles?.email && <span> · {p.profiles.email}</span>}
+                  {p.profiles?.phone && <span> · {p.profiles.phone}</span>}
+                </div>
+              ))}
+            </div>
           )}
 
           <section className="section">

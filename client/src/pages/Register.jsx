@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8}$/;
 
 export default function Register() {
-  const [form, setForm] = useState({ dni: '', email: '', name: '', password: '' });
+  const [form, setForm] = useState({ dni: '', email: '', name: '', password: '', phone: '' });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const { register } = useAuth();
@@ -13,6 +13,7 @@ export default function Register() {
 
   const passwordValid = PASSWORD_REGEX.test(form.password);
   const dniValid = /^[0-9]{7,8}$/.test(form.dni);
+  const phoneValid = form.phone.replace(/\D/g, '').length >= 8;
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -28,6 +29,10 @@ export default function Register() {
     }
     if (!passwordValid) {
       setError('La clave debe tener exactamente 8 caracteres, combinando letras y números.');
+      return;
+    }
+    if (!phoneValid) {
+      setError('Ingresá un teléfono de contacto válido.');
       return;
     }
 
@@ -76,6 +81,20 @@ export default function Register() {
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
           />
+        </label>
+
+        <label>
+          Teléfono de contacto
+          <input
+            required
+            type="tel"
+            placeholder="ej: 11 2345 6789"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+          />
+          <span className="hint">
+            Solo lo van a ver el conductor/a y los pasajeros confirmados de tus viajes.
+          </span>
         </label>
 
         <label>

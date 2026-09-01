@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../supabaseClient.js';
-import { isValidDni, isValidPassword, isValidEmail } from '../utils/validators.js';
+import { isValidDni, isValidPassword, isValidEmail, isValidPhone } from '../utils/validators.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -17,13 +17,19 @@ function signToken(profile) {
 }
 
 function publicProfile(profile) {
-  return { id: profile.id, dni: profile.id, email: profile.email, name: profile.name };
+  return {
+    id: profile.id,
+    dni: profile.id,
+    email: profile.email,
+    name: profile.name,
+    phone: profile.phone,
+  };
 }
 
 // POST /api/auth/register
-// body: { dni, email, password, name }
+// body: { dni, email, password, name, phone }
 router.post('/register', async (req, res) => {
-  const { dni, email, password, name } = req.body;
+  const { dni, email, password, name, phone } = req.body;
 
   if (!isValidDni(dni)) {
     return res.status(400).json({ error: 'El DNI debe tener 7 u 8 dígitos, sin puntos.' });
@@ -36,6 +42,9 @@ router.post('/register', async (req, res) => {
       error:
         'La clave debe tener exactamente 8 caracteres alfanuméricos, combinando letras y números.',
     });
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Ingresá un teléfono de contacto válido.' });
   }
 
   const { data: existing } = await supabase
@@ -53,8 +62,8 @@ router.post('/register', async (req, res) => {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .insert({ id: dni, dni, email, password_hash, name: name || null })
-    .select('id, email, name')
+    .insert({ id: dni, dni, email, password_hash, name: name || null, phone })
+    .select('id, email, name, phone')
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -74,7 +83,7 @@ router.post('/login', async (req, res) => {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('id, email, name, password_hash')
+    .select('id, email, name, phone, password_hash')
     .eq('id', dni)
     .maybeSingle();
 
@@ -100,7 +109,7 @@ router.get('/me', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('id, email, name')
+      .select('id, email, name, phone')
       .eq('id', decoded.sub)
       .single();
 

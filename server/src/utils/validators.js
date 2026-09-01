@@ -15,3 +15,11 @@ export function isValidPassword(password) {
 export function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+// Teléfono: entre 8 y 15 dígitos (permite espacios, guiones,
+// paréntesis y el signo + para el código de país).
+export function isValidPhone(phone) {
+  if (typeof phone !== 'string') return false;
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 8 && digits.length <= 15;
+}

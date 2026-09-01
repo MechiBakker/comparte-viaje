@@ -437,3 +437,32 @@ button {
     flex-direction: column;
   }
 }
+/* ---------- Contact card ---------- */
+.contact-card {
+  margin-top: 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+}
+
+.contact-card h4 {
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+
+.contact-card p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.contact-card__row {
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.contact-card__row:first-of-type {
+  border-top: none;
+}
