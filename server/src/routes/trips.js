@@ -5,8 +5,14 @@ import { requireAuth, optionalAuth } from '../middleware/auth.js';
 const router = Router();
 const PAYMENT_METHODS = ['efectivo', 'transferencia', 'ambos'];
 
+function computeArchived(trip) {
+  const departed = new Date(trip.departure_date).getTime() < Date.now();
+  const full = trip.seats_available <= 0;
+  return departed || full;
+}
+
 // GET /api/trips?origin=&destination=&date=
-// Búsqueda pública de viajes activos.
+// Búsqueda pública: solo viajes activos, con cupo, y que todavía no salieron.
 router.get('/', optionalAuth, async (req, res) => {
   const { origin, destination, date } = req.query;
 
@@ -14,6 +20,8 @@ router.get('/', optionalAuth, async (req, res) => {
     .from('trips')
     .select('*, profiles!trips_driver_id_fkey(name, email)')
     .eq('status', 'active')
+    .gt('seats_available', 0)
+    .gte('departure_date', new Date().toISOString())
     .order('departure_date', { ascending: true });
 
   if (origin) query = query.ilike('origin', `%${origin}%`);
@@ -34,7 +42,8 @@ router.get('/mine', requireAuth, async (req, res) => {
   const { data: asDriver, error: e1 } = await supabase
     .from('trips')
     .select('*')
-    .eq('driver_id', req.user.id);
+    .eq('driver_id', req.user.id)
+    .order('departure_date', { ascending: false });
 
   const { data: asPassenger, error: e2 } = await supabase
     .from('trip_participants')
@@ -44,15 +53,15 @@ router.get('/mine', requireAuth, async (req, res) => {
   if (e1 || e2) return res.status(500).json({ error: (e1 || e2).message });
 
   res.json({
-    driving: asDriver,
-    riding: asPassenger.map((p) => p.trip),
+    driving: (asDriver || []).map((t) => ({ ...t, is_archived: computeArchived(t) })),
+    riding: asPassenger
+      .map((p) => p.trip)
+      .filter(Boolean)
+      .map((t) => ({ ...t, is_archived: computeArchived(t) })),
   });
 });
 
 // GET /api/trips/:id
-// El email y teléfono de contacto (conductor y pasajeros) solo se
-// devuelven si quien pregunta es el conductor o un pasajero
-// confirmado de ESTE viaje. Cualquier otro visitante ve solo nombres.
 router.get('/:id', optionalAuth, async (req, res) => {
   const { data: trip, error } = await supabase
     .from('trips')
@@ -83,7 +92,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
     profiles: stripContact(p.profiles),
   }));
 
-  res.json({ ...trip, profiles: stripContact(trip.profiles), participants: participantsOut });
+  res.json({
+    ...trip,
+    profiles: stripContact(trip.profiles),
+    participants: participantsOut,
+    is_archived: computeArchived(trip),
+    has_reservations: trip.seats_available !== trip.seats_total,
+  });
 });
 
 // POST /api/trips -> publicar un viaje
@@ -129,6 +144,58 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
+// PATCH /api/trips/:id -> editar título, descripción y/o fecha de salida.
+// Solo el conductor, y solo si todavía no hay reservas confirmadas.
+router.patch('/:id', requireAuth, async (req, res) => {
+  const { data: trip, error: tripError } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('id', req.params.id)
+    .single();
+
+  if (tripError) return res.status(404).json({ error: 'Viaje no encontrado.' });
+  if (trip.driver_id !== req.user.id) {
+    return res.status(403).json({ error: 'Solo el conductor puede editar el viaje.' });
+  }
+  if (trip.seats_available !== trip.seats_total) {
+    return res.status(409).json({
+      error: 'No se puede editar un viaje que ya tiene reservas confirmadas.',
+    });
+  }
+
+  const { title, description, departure_date } = req.body;
+  const updates = {};
+
+  if (title !== undefined) {
+    if (!title.trim()) return res.status(400).json({ error: 'El título no puede estar vacío.' });
+    updates.title = title;
+  }
+  if (description !== undefined) updates.description = description;
+  if (departure_date !== undefined) {
+    const parsed = new Date(departure_date);
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() < Date.now()) {
+      return res.status(400).json({ error: 'La fecha de salida debe ser válida y futura.' });
+    }
+    updates.departure_date = parsed.toISOString();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No se envió ningún campo para actualizar.' });
+  }
+
+  updates.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('trips')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // POST /api/trips/:id/join -> reservar lugar en un viaje
 router.post('/:id/join', requireAuth, async (req, res) => {
   const tripId = req.params.id;
@@ -164,17 +231,23 @@ router.post('/:id/join', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-// DELETE /api/trips/:id -> cancelar un viaje (solo el conductor)
+// DELETE /api/trips/:id -> eliminar/cancelar un viaje.
+// Solo el conductor, y solo si todavía no hay reservas confirmadas.
 router.delete('/:id', requireAuth, async (req, res) => {
   const { data: trip, error: tripError } = await supabase
     .from('trips')
-    .select('driver_id')
+    .select('driver_id, seats_available, seats_total')
     .eq('id', req.params.id)
     .single();
 
   if (tripError) return res.status(404).json({ error: 'Viaje no encontrado.' });
   if (trip.driver_id !== req.user.id) {
-    return res.status(403).json({ error: 'Solo el conductor puede cancelar el viaje.' });
+    return res.status(403).json({ error: 'Solo el conductor puede eliminar el viaje.' });
+  }
+  if (trip.seats_available !== trip.seats_total) {
+    return res.status(409).json({
+      error: 'No se puede eliminar un viaje que ya tiene reservas confirmadas.',
+    });
   }
 
   const { error } = await supabase

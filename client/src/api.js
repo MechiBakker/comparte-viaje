@@ -25,12 +25,9 @@ export const api = {
   getMyTrips: () => request('/trips/mine'),
   getTrip: (id) => request(`/trips/${id}`),
   createTrip: (data) => request('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrip: (id, data) =>
+    request(`/trips/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   joinTrip: (id, seats_reserved = 1) =>
     request(`/trips/${id}/join`, { method: 'POST', body: JSON.stringify({ seats_reserved }) }),
   cancelTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
-
-  getExpenses: (tripId) => request(`/trips/${tripId}/expenses`),
-  addExpense: (tripId, data) =>
-    request(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
-  getBalance: (tripId) => request(`/trips/${tripId}/expenses/balance`),
 };

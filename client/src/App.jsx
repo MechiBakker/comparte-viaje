@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import TripDetail from './pages/TripDetail';
 import CreateTrip from './pages/CreateTrip';
+import EditTrip from './pages/EditTrip';
 import MyTrips from './pages/MyTrips';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,6 +24,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CreateTrip />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/viajes/:id/editar"
+            element={
+              <ProtectedRoute>
+                <EditTrip />
               </ProtectedRoute>
             }
           />

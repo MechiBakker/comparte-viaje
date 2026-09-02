@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 
@@ -16,11 +16,13 @@ const PAYMENT_LABELS = {
 
 export default function TripDetail() {
   const { id } = useParams();
-  const { authenticated } = useAuth();
+  const { authenticated, user } = useAuth();
+  const navigate = useNavigate();
 
   const [trip, setTrip] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -48,15 +50,37 @@ export default function TripDetail() {
     }
   }
 
+  async function handleDelete() {
+    if (!window.confirm('¿Seguro que querés eliminar este viaje? No se puede deshacer.')) return;
+    setDeleting(true);
+    try {
+      await api.cancelTrip(id);
+      navigate('/mis-viajes');
+    } catch (err) {
+      setError(err.message);
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <div className="page-loading">Cargando viaje…</div>;
   if (!trip) return <div className="error-banner">Viaje no encontrado.</div>;
 
   const confirmedParticipants = (trip.participants || []).filter((p) => p.status === 'confirmed');
   const hasDriverContact = Boolean(trip.profiles?.email);
   const paymentLabel = PAYMENT_LABELS[trip.payment_method] || 'Efectivo';
+  const isDriver = trip.driver_id === user?.id;
+  const canManage = isDriver && !trip.has_reservations;
 
   return (
     <div className="page page--narrow">
+      {trip.is_archived && (
+        <div className="archived-banner">
+          {new Date(trip.departure_date).getTime() < Date.now()
+            ? 'Este viaje ya salió.'
+            : 'Este viaje ya no tiene lugares disponibles.'}
+        </div>
+      )}
+
       <div className="trip-detail__header">
         <div className="trip-detail__route">
           {trip.origin} <span aria-hidden="true">→</span> {trip.destination}
@@ -88,9 +112,28 @@ export default function TripDetail() {
 
       {error && <div className="error-banner">{error}</div>}
 
+      {isDriver && (
+        <div className="owner-actions">
+          {canManage ? (
+            <>
+              <Link to={`/viajes/${id}/editar`} className="btn btn--secondary">
+                Editar viaje
+              </Link>
+              <button className="btn btn--ghost" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Eliminando…' : 'Eliminar viaje'}
+              </button>
+            </>
+          ) : (
+            <p className="hint">
+              Este viaje ya tiene reservas, así que no se puede editar ni eliminar.
+            </p>
+          )}
+        </div>
+      )}
+
       {authenticated ? (
         <>
-          {trip.seats_available > 0 && (
+          {!isDriver && trip.seats_available > 0 && (
             <button className="btn btn--primary" onClick={handleJoin}>
               Reservar lugar
             </button>
