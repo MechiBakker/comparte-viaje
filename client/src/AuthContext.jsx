@@ -44,11 +44,11 @@ export function AuthProvider({ children }) {
     return body.user;
   }
 
-  async function register({ dni, email, password, name }) {
+  async function register({ dni, email, password, name, phone }) {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dni, email, password, name }),
+      body: JSON.stringify({ dni, email, password, name, phone }),
     });
     return handleAuthResponse(res);
   }
