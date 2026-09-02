@@ -88,7 +88,7 @@ export default function Register() {
           <input
             required
             type="tel"
-            placeholder="ej: 11 2345 6789"
+            placeholder="ej: 1123456789"
             value={form.phone}
             onChange={(e) => update('phone', e.target.value)}
           />
