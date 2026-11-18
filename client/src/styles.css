@@ -629,3 +629,13 @@ button {
     min-width: 40%;
   }
 }
+
+/* ---------- Chat: botón Enviar en mobile ---------- */
+.chat__form input {
+  min-width: 0; /* deja que el campo se achique en pantallas angostas */
+}
+
+.chat__form .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
