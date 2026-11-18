@@ -16,7 +16,14 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/viajes/:id" element={<TripDetail />} />
+                    <Route
+            path="/viajes/:id"
+            element={
+              <ProtectedRoute>
+                <TripDetail />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/ingresar" element={<Login />} />
           <Route path="/registrarse" element={<Register />} />
           <Route

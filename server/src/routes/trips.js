@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../supabaseClient.js';
-import { requireAuth, optionalAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 const PAYMENT_METHODS = ['efectivo', 'transferencia', 'ambos'];
@@ -42,7 +42,7 @@ function cleanText(value) {
 // Búsqueda pública: solo viajes activos, con cupo, y que todavía no salieron.
 // El origen coincide con la ciudad de origen o con el punto de salida;
 // el destino, con la ciudad de destino o con el punto de llegada.
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const { origin, destination, date } = req.query;
 
   let query = supabase
@@ -94,7 +94,7 @@ router.get('/mine', requireAuth, async (req, res) => {
 });
 
 // GET /api/trips/:id
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   const { data: trip, error } = await supabase
     .from('trips')
     .select('*, profiles!trips_driver_id_fkey(name, email, phone)')

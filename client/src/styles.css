@@ -598,3 +598,34 @@ button {
   font-size: 0.95rem;
   font-family: var(--font-body);
 }
+
+/* ---------- Mobile fixes ---------- */
+.trip-detail__description,
+.trip-points p,
+.contact-card p,
+.contact-card__row,
+.trip-card__title,
+.stat-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Respeta los saltos de línea que se escriben en la descripción */
+.trip-detail__description {
+  white-space: pre-line;
+}
+
+.trip-detail__stats {
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .trip-detail__stats > div {
+    min-width: 40%;
+  }
+}
