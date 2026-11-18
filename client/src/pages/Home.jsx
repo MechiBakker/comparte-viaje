@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import TripCard from '../components/TripCard';
+import { ARGENTINE_CITIES } from '../data/cities';
 
 export default function Home() {
   const [filters, setFilters] = useState({ origin: '', destination: '', date: '' });
@@ -44,12 +45,14 @@ export default function Home() {
       <form className="search-bar" onSubmit={search}>
         <input
           type="text"
+          list="cities-datalist"
           placeholder="Origen"
           value={filters.origin}
           onChange={(e) => setFilters({ ...filters, origin: e.target.value })}
         />
         <input
           type="text"
+          list="cities-datalist"
           placeholder="Destino"
           value={filters.destination}
           onChange={(e) => setFilters({ ...filters, destination: e.target.value })}
@@ -63,6 +66,12 @@ export default function Home() {
           Buscar
         </button>
       </form>
+
+      <datalist id="cities-datalist">
+        {ARGENTINE_CITIES.map((city) => (
+          <option key={city} value={city} />
+        ))}
+      </datalist>
 
       {loading && <div className="page-loading">Buscando viajes…</div>}
       {error && <div className="error-banner">{error}</div>}

@@ -500,3 +500,17 @@ button {
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
 }
+
+/* ---------- Meeting points ---------- */
+.trip-points {
+  margin: 1rem 0;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.trip-points p {
+  margin: 0.25rem 0;
+  font-size: 0.92rem;
+}

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { ARGENTINE_CITIES } from '../data/cities';
 
 const initialState = {
   title: '',
   origin: '',
   destination: '',
+  departure_point: '',
+  arrival_point: '',
   departure_date: '',
   seats_total: 3,
   price_per_seat: 0,
@@ -59,22 +62,51 @@ export default function CreateTrip() {
 
         <div className="form__row">
           <label>
-            Origen
+            Ciudad de origen
             <input
               required
+              list="cities-datalist"
+              placeholder="Empezá a escribir…"
               value={form.origin}
               onChange={(e) => update('origin', e.target.value)}
             />
           </label>
           <label>
-            Destino
+            Ciudad de destino
             <input
               required
+              list="cities-datalist"
+              placeholder="Empezá a escribir…"
               value={form.destination}
               onChange={(e) => update('destination', e.target.value)}
             />
           </label>
         </div>
+
+        <div className="form__row">
+          <label>
+            Lugar de salida (opcional)
+            <input
+              placeholder="Ej: Terminal de ómnibus"
+              value={form.departure_point}
+              onChange={(e) => update('departure_point', e.target.value)}
+            />
+          </label>
+          <label>
+            Lugar de llegada (opcional)
+            <input
+              placeholder="Ej: Plaza principal"
+              value={form.arrival_point}
+              onChange={(e) => update('arrival_point', e.target.value)}
+            />
+          </label>
+        </div>
+
+        <datalist id="cities-datalist">
+          {ARGENTINE_CITIES.map((city) => (
+            <option key={city} value={city} />
+          ))}
+        </datalist>
 
         <div className="form__row">
           <label>
@@ -126,7 +158,7 @@ export default function CreateTrip() {
           Descripción
           <textarea
             rows={4}
-            placeholder="Punto de encuentro, equipaje permitido, mascotas, etc."
+            placeholder="Equipaje permitido, mascotas, etc."
             value={form.description}
             onChange={(e) => update('description', e.target.value)}
           />

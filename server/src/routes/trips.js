@@ -11,8 +11,23 @@ function computeArchived(trip) {
   return departed || full;
 }
 
+// Arma un filtro OR de PostgREST (columna ILIKE valor). Se entrecomilla
+// el valor porque los nombres de ciudad llevan comas ("La Plata, Buenos Aires").
+function orIlike(columns, term) {
+  const safe = term.replace(/["\\]/g, '');
+  return columns.map((c) => `${c}.ilike."%${safe}%"`).join(',');
+}
+
+function cleanText(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 // GET /api/trips?origin=&destination=&date=
 // Búsqueda pública: solo viajes activos, con cupo, y que todavía no salieron.
+// El origen coincide con la ciudad de origen o con el punto de salida;
+// el destino, con la ciudad de destino o con el punto de llegada.
 router.get('/', optionalAuth, async (req, res) => {
   const { origin, destination, date } = req.query;
 
@@ -24,8 +39,8 @@ router.get('/', optionalAuth, async (req, res) => {
     .gte('departure_date', new Date().toISOString())
     .order('departure_date', { ascending: true });
 
-  if (origin) query = query.ilike('origin', `%${origin}%`);
-  if (destination) query = query.ilike('destination', `%${destination}%`);
+  if (origin) query = query.or(orIlike(['origin', 'departure_point'], origin));
+  if (destination) query = query.or(orIlike(['destination', 'arrival_point'], destination));
   if (date) {
     const start = `${date}T00:00:00Z`;
     const end = `${date}T23:59:59Z`;
@@ -107,6 +122,8 @@ router.post('/', requireAuth, async (req, res) => {
     title,
     origin,
     destination,
+    departure_point,
+    arrival_point,
     departure_date,
     seats_total,
     price_per_seat,
@@ -130,6 +147,8 @@ router.post('/', requireAuth, async (req, res) => {
       title,
       origin,
       destination,
+      departure_point: cleanText(departure_point),
+      arrival_point: cleanText(arrival_point),
       departure_date,
       seats_total,
       seats_available: seats_total,
@@ -144,8 +163,8 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-// PATCH /api/trips/:id -> editar título, descripción y/o fecha de salida.
-// Solo el conductor, y solo si todavía no hay reservas confirmadas.
+// PATCH /api/trips/:id -> editar título, descripción, fecha de salida y
+// puntos de encuentro. Solo el conductor, y solo si todavía no hay reservas.
 router.patch('/:id', requireAuth, async (req, res) => {
   const { data: trip, error: tripError } = await supabase
     .from('trips')
@@ -163,7 +182,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
     });
   }
 
-  const { title, description, departure_date } = req.body;
+  const { title, description, departure_date, departure_point, arrival_point } = req.body;
   const updates = {};
 
   if (title !== undefined) {
@@ -171,6 +190,8 @@ router.patch('/:id', requireAuth, async (req, res) => {
     updates.title = title;
   }
   if (description !== undefined) updates.description = description;
+  if (departure_point !== undefined) updates.departure_point = cleanText(departure_point);
+  if (arrival_point !== undefined) updates.arrival_point = cleanText(arrival_point);
   if (departure_date !== undefined) {
     const parsed = new Date(departure_date);
     if (Number.isNaN(parsed.getTime()) || parsed.getTime() < Date.now()) {

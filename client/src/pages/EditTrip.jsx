@@ -16,7 +16,13 @@ export default function EditTrip() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ title: '', description: '', departure_date: '' });
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    departure_date: '',
+    departure_point: '',
+    arrival_point: '',
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +43,8 @@ export default function EditTrip() {
           title: trip.title,
           description: trip.description || '',
           departure_date: toDatetimeLocal(trip.departure_date),
+          departure_point: trip.departure_point || '',
+          arrival_point: trip.arrival_point || '',
         });
       })
       .catch((err) => setError(err.message))
@@ -56,6 +64,8 @@ export default function EditTrip() {
       await api.updateTrip(id, {
         title: form.title,
         description: form.description,
+        departure_point: form.departure_point,
+        arrival_point: form.arrival_point,
         departure_date: new Date(form.departure_date).toISOString(),
       });
       navigate(`/viajes/${id}`);
@@ -80,8 +90,8 @@ export default function EditTrip() {
     <div className="page page--narrow">
       <h1>Editar viaje</h1>
       <p className="trip-detail__date">
-        Solo podés modificar el título, la descripción y la fecha/horario de salida. El origen,
-        destino y cupos no se pueden cambiar una vez publicado.
+        Podés modificar el título, la descripción, la fecha y horario de salida y los puntos de
+        encuentro. Las ciudades, los cupos y el precio no se pueden cambiar una vez publicado.
       </p>
 
       <form className="form" onSubmit={handleSubmit}>
@@ -93,6 +103,23 @@ export default function EditTrip() {
             onChange={(e) => update('title', e.target.value)}
           />
         </label>
+
+        <div className="form__row">
+          <label>
+            Lugar de salida (opcional)
+            <input
+              value={form.departure_point}
+              onChange={(e) => update('departure_point', e.target.value)}
+            />
+          </label>
+          <label>
+            Lugar de llegada (opcional)
+            <input
+              value={form.arrival_point}
+              onChange={(e) => update('arrival_point', e.target.value)}
+            />
+          </label>
+        </div>
 
         <label>
           Fecha y hora de salida

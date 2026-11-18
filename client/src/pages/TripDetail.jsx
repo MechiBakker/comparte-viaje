@@ -89,6 +89,21 @@ export default function TripDetail() {
         <p className="trip-detail__date">{dateFormatter.format(new Date(trip.departure_date))}</p>
       </div>
 
+            {(trip.departure_point || trip.arrival_point) && (
+        <div className="trip-points">
+          {trip.departure_point && (
+            <p>
+              <strong>Salida:</strong> {trip.departure_point}
+            </p>
+          )}
+          {trip.arrival_point && (
+            <p>
+              <strong>Llegada:</strong> {trip.arrival_point}
+            </p>
+          )}
+        </div>
+      )}
+
       {trip.description && <p className="trip-detail__description">{trip.description}</p>}
 
       <div className="trip-detail__stats">
