@@ -31,14 +31,11 @@ export default function EditTrip() {
     api
       .getTrip(id)
       .then((trip) => {
-        if (trip.driver_id !== user?.id) {
-          setError('No tenés permiso para editar este viaje.');
+        if (!trip.can_manage) {
+          setError('No tenés permiso para editar este viaje, o ya tiene reservas.');
           return;
         }
-        if (trip.has_reservations) {
-          setError('Este viaje ya tiene reservas confirmadas, no se puede editar.');
-          return;
-        }
+
         setForm({
           title: trip.title,
           description: trip.description || '',

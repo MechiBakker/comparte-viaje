@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
+import TripChat from '../components/TripChat';
 
 const dateFormatter = new Intl.DateTimeFormat('es-AR', {
   dateStyle: 'full',
@@ -51,11 +52,14 @@ export default function TripDetail() {
   }
 
   async function handleDelete() {
-    if (!window.confirm('¿Seguro que querés eliminar este viaje? No se puede deshacer.')) return;
+    const message = trip.has_reservations
+      ? 'Este viaje tiene reservas confirmadas. ¿Seguro que querés eliminarlo igual? No se puede deshacer.'
+      : '¿Seguro que querés eliminar este viaje? No se puede deshacer.';
+    if (!window.confirm(message)) return;
     setDeleting(true);
     try {
       await api.cancelTrip(id);
-      navigate('/mis-viajes');
+      navigate(trip.driver_id === user?.id ? '/mis-viajes' : '/');
     } catch (err) {
       setError(err.message);
       setDeleting(false);
@@ -69,16 +73,21 @@ export default function TripDetail() {
   const hasDriverContact = Boolean(trip.profiles?.email);
   const paymentLabel = PAYMENT_LABELS[trip.payment_method] || 'Efectivo';
   const isDriver = trip.driver_id === user?.id;
-  const canManage = isDriver && !trip.has_reservations;
+  const isParticipant = confirmedParticipants.some((p) => p.user_id === user?.id);
+  const isMember = isDriver || isParticipant;
+  const isCancelled = trip.status === 'cancelled';
+  const departed = new Date(trip.departure_date).getTime() < Date.now();
+
+  let archivedMessage = 'Este viaje ya no tiene lugares disponibles.';
+  if (isCancelled) archivedMessage = 'Este viaje fue cancelado.';
+  else if (departed) archivedMessage = 'Este viaje ya salió.';
 
   return (
     <div className="page page--narrow">
-      {trip.is_archived && (
-        <div className="archived-banner">
-          {new Date(trip.departure_date).getTime() < Date.now()
-            ? 'Este viaje ya salió.'
-            : 'Este viaje ya no tiene lugares disponibles.'}
-        </div>
+      {trip.is_archived && <div className="archived-banner">{archivedMessage}</div>}
+
+      {trip.is_admin && (
+        <div className="admin-banner">Estás viendo este viaje como administrador/a.</div>
       )}
 
       <div className="trip-detail__header">
@@ -89,7 +98,7 @@ export default function TripDetail() {
         <p className="trip-detail__date">{dateFormatter.format(new Date(trip.departure_date))}</p>
       </div>
 
-            {(trip.departure_point || trip.arrival_point) && (
+      {(trip.departure_point || trip.arrival_point) && (
         <div className="trip-points">
           {trip.departure_point && (
             <p>
@@ -127,9 +136,9 @@ export default function TripDetail() {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {isDriver && (
+      {(isDriver || trip.is_admin) && (
         <div className="owner-actions">
-          {canManage ? (
+          {trip.can_manage ? (
             <>
               <Link to={`/viajes/${id}/editar`} className="btn btn--secondary">
                 Editar viaje
@@ -148,11 +157,13 @@ export default function TripDetail() {
 
       {authenticated ? (
         <>
-          {!isDriver && trip.seats_available > 0 && (
+          {!isMember && !trip.is_archived && (
             <button className="btn btn--primary" onClick={handleJoin}>
               Reservar lugar
             </button>
           )}
+
+          {isParticipant && <p className="hint">Ya tenés un lugar reservado en este viaje.</p>}
 
           {hasDriverContact && (
             <div className="contact-card">
@@ -174,6 +185,13 @@ export default function TripDetail() {
                 </div>
               ))}
             </div>
+          )}
+
+          {isMember && (
+            <section className="section">
+              <h2>Chat del viaje</h2>
+              <TripChat tripId={id} currentUserId={user?.id} />
+            </section>
           )}
         </>
       ) : (

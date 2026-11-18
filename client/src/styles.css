@@ -514,3 +514,87 @@ button {
   margin: 0.25rem 0;
   font-size: 0.92rem;
 }
+
+/* ---------- Admin banner ---------- */
+.admin-banner {
+  background: #e3ecf7;
+  color: #1f3a5f;
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.9rem;
+}
+
+/* ---------- Chat ---------- */
+.chat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.chat__list {
+  height: 320px;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.chat__empty {
+  margin: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.chat__msg {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 0.92rem;
+}
+
+.chat__msg--mine {
+  align-self: flex-end;
+  background: var(--route-amber-soft);
+}
+
+.chat__author {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.chat__text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat__time {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.chat__form {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.chat__form input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+}

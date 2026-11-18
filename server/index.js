@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRouter from './src/routes/auth.js';
 import tripsRouter from './src/routes/trips.js';
 import expensesRouter from './src/routes/expenses.js';
+import messagesRouter from './src/routes/messages.js';
 
 if (!process.env.JWT_SECRET) {
   console.warn('[index] Falta JWT_SECRET en las variables de entorno.');
@@ -19,6 +20,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 app.use('/api/trips', tripsRouter);
 app.use('/api/trips/:tripId/expenses', expensesRouter);
+app.use('/api/trips/:tripId/messages', messagesRouter);
 
 // Manejo de errores genérico
 app.use((err, req, res, next) => {

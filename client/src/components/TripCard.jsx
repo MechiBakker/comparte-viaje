@@ -17,7 +17,11 @@ const PAYMENT_LABELS = {
 export default function TripCard({ trip }) {
   return (
     <Link to={`/viajes/${trip.id}`} className="trip-card">
-      {trip.is_archived && <span className="trip-card__badge">Archivado</span>}
+      {trip.is_archived && (
+        <span className="trip-card__badge">
+          {trip.status === 'cancelled' ? 'Cancelado' : 'Archivado'}
+        </span>
+      )}
 
       <div className="trip-card__route">
         <span>{trip.origin}</span>

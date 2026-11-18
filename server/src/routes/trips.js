@@ -8,7 +8,21 @@ const PAYMENT_METHODS = ['efectivo', 'transferencia', 'ambos'];
 function computeArchived(trip) {
   const departed = new Date(trip.departure_date).getTime() < Date.now();
   const full = trip.seats_available <= 0;
-  return departed || full;
+  const cancelled = trip.status === 'cancelled';
+  return departed || full || cancelled;
+}
+
+// El permiso de administrador se consulta en la base en cada pedido
+// (columna profiles.is_admin), no se guarda en el token. Así no se puede
+// falsificar y se puede quitar al instante.
+async function isAdminUser(userId) {
+  if (!userId) return false;
+  const { data } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle();
+  return Boolean(data?.is_admin);
 }
 
 // Arma un filtro OR de PostgREST (columna ILIKE valor). Se entrecomilla
@@ -53,11 +67,14 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // GET /api/trips/mine  -> viajes que yo publiqué o en los que participo
+// Los viajes eliminados no aparecen para el conductor; el pasajero los ve
+// marcados como cancelados.
 router.get('/mine', requireAuth, async (req, res) => {
   const { data: asDriver, error: e1 } = await supabase
     .from('trips')
     .select('*')
     .eq('driver_id', req.user.id)
+    .neq('status', 'cancelled')
     .order('departure_date', { ascending: false });
 
   const { data: asPassenger, error: e2 } = await supabase
@@ -91,11 +108,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
     .select('*, profiles(name, email, phone)')
     .eq('trip_id', req.params.id);
 
+  const admin = await isAdminUser(req.user?.id);
   const isDriver = req.user?.id === trip.driver_id;
   const isConfirmedParticipant = (participants || []).some(
     (p) => p.user_id === req.user?.id && p.status === 'confirmed'
   );
-  const canSeeContactInfo = isDriver || isConfirmedParticipant;
+  // El administrador también ve los datos de contacto.
+  const canSeeContactInfo = isDriver || isConfirmedParticipant || admin;
+  const hasReservations = trip.seats_available !== trip.seats_total;
 
   function stripContact(profile) {
     if (!profile) return profile;
@@ -112,7 +132,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
     profiles: stripContact(trip.profiles),
     participants: participantsOut,
     is_archived: computeArchived(trip),
-    has_reservations: trip.seats_available !== trip.seats_total,
+    has_reservations: hasReservations,
+    is_admin: admin,
+    // El conductor puede editar/eliminar si no hay reservas;
+    // el administrador, siempre.
+    can_manage: admin || (isDriver && !hasReservations),
   });
 });
 
@@ -164,7 +188,8 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // PATCH /api/trips/:id -> editar título, descripción, fecha de salida y
-// puntos de encuentro. Solo el conductor, y solo si todavía no hay reservas.
+// puntos de encuentro. El conductor, solo si todavía no hay reservas;
+// el administrador, siempre.
 router.patch('/:id', requireAuth, async (req, res) => {
   const { data: trip, error: tripError } = await supabase
     .from('trips')
@@ -173,10 +198,12 @@ router.patch('/:id', requireAuth, async (req, res) => {
     .single();
 
   if (tripError) return res.status(404).json({ error: 'Viaje no encontrado.' });
-  if (trip.driver_id !== req.user.id) {
+
+  const admin = await isAdminUser(req.user.id);
+  if (trip.driver_id !== req.user.id && !admin) {
     return res.status(403).json({ error: 'Solo el conductor puede editar el viaje.' });
   }
-  if (trip.seats_available !== trip.seats_total) {
+  if (!admin && trip.seats_available !== trip.seats_total) {
     return res.status(409).json({
       error: 'No se puede editar un viaje que ya tiene reservas confirmadas.',
     });
@@ -194,7 +221,8 @@ router.patch('/:id', requireAuth, async (req, res) => {
   if (arrival_point !== undefined) updates.arrival_point = cleanText(arrival_point);
   if (departure_date !== undefined) {
     const parsed = new Date(departure_date);
-    if (Number.isNaN(parsed.getTime()) || parsed.getTime() < Date.now()) {
+    // El administrador puede corregir viajes cuya fecha ya pasó.
+    if (Number.isNaN(parsed.getTime()) || (!admin && parsed.getTime() < Date.now())) {
       return res.status(400).json({ error: 'La fecha de salida debe ser válida y futura.' });
     }
     updates.departure_date = parsed.toISOString();
@@ -229,6 +257,12 @@ router.post('/:id/join', requireAuth, async (req, res) => {
     .single();
 
   if (tripError) return res.status(404).json({ error: 'Viaje no encontrado.' });
+  if (trip.status !== 'active') {
+    return res.status(400).json({ error: 'Este viaje ya no está disponible.' });
+  }
+  if (new Date(trip.departure_date).getTime() < Date.now()) {
+    return res.status(400).json({ error: 'Este viaje ya salió.' });
+  }
   if (trip.driver_id === req.user.id) {
     return res.status(400).json({ error: 'No podés unirte a tu propio viaje.' });
   }
@@ -253,7 +287,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/trips/:id -> eliminar/cancelar un viaje.
-// Solo el conductor, y solo si todavía no hay reservas confirmadas.
+// El conductor, solo si todavía no hay reservas; el administrador, siempre.
 router.delete('/:id', requireAuth, async (req, res) => {
   const { data: trip, error: tripError } = await supabase
     .from('trips')
@@ -262,10 +296,12 @@ router.delete('/:id', requireAuth, async (req, res) => {
     .single();
 
   if (tripError) return res.status(404).json({ error: 'Viaje no encontrado.' });
-  if (trip.driver_id !== req.user.id) {
+
+  const admin = await isAdminUser(req.user.id);
+  if (trip.driver_id !== req.user.id && !admin) {
     return res.status(403).json({ error: 'Solo el conductor puede eliminar el viaje.' });
   }
-  if (trip.seats_available !== trip.seats_total) {
+  if (!admin && trip.seats_available !== trip.seats_total) {
     return res.status(409).json({
       error: 'No se puede eliminar un viaje que ya tiene reservas confirmadas.',
     });

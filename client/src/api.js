@@ -30,4 +30,8 @@ export const api = {
   joinTrip: (id, seats_reserved = 1) =>
     request(`/trips/${id}/join`, { method: 'POST', body: JSON.stringify({ seats_reserved }) }),
   cancelTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
+    getMessages: (tripId, after) =>
+    request(`/trips/${tripId}/messages${after ? `?${new URLSearchParams({ after })}` : ''}`),
+  sendMessage: (tripId, body) =>
+    request(`/trips/${tripId}/messages`, { method: 'POST', body: JSON.stringify({ body }) }),
 };
