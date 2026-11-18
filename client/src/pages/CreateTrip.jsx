@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { ARGENTINE_CITIES } from '../data/cities';
+import CityInput from '../components/CityInput';
 
 const initialState = {
   title: '',
@@ -63,22 +63,20 @@ export default function CreateTrip() {
         <div className="form__row">
           <label>
             Ciudad de origen
-            <input
+            <CityInput
               required
-              list="cities-datalist"
               placeholder="Empezá a escribir…"
               value={form.origin}
-              onChange={(e) => update('origin', e.target.value)}
+              onChange={(v) => update('origin', v)}
             />
           </label>
           <label>
             Ciudad de destino
-            <input
+            <CityInput
               required
-              list="cities-datalist"
               placeholder="Empezá a escribir…"
               value={form.destination}
-              onChange={(e) => update('destination', e.target.value)}
+              onChange={(v) => update('destination', v)}
             />
           </label>
         </div>
@@ -101,12 +99,6 @@ export default function CreateTrip() {
             />
           </label>
         </div>
-
-        <datalist id="cities-datalist">
-          {ARGENTINE_CITIES.map((city) => (
-            <option key={city} value={city} />
-          ))}
-        </datalist>
 
         <div className="form__row">
           <label>

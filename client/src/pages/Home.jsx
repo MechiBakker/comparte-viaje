@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import TripCard from '../components/TripCard';
-import { ARGENTINE_CITIES } from '../data/cities';
+import CityInput from '../components/CityInput';
 
 export default function Home() {
   const { ready, authenticated } = useAuth();
@@ -63,19 +63,15 @@ export default function Home() {
       ) : (
         <>
           <form className="search-bar" onSubmit={search}>
-            <input
-              type="text"
-              list="cities-datalist"
+            <CityInput
               placeholder="Origen"
               value={filters.origin}
-              onChange={(e) => setFilters({ ...filters, origin: e.target.value })}
+              onChange={(v) => setFilters((f) => ({ ...f, origin: v }))}
             />
-            <input
-              type="text"
-              list="cities-datalist"
+            <CityInput
               placeholder="Destino"
               value={filters.destination}
-              onChange={(e) => setFilters({ ...filters, destination: e.target.value })}
+              onChange={(v) => setFilters((f) => ({ ...f, destination: v }))}
             />
             <input
               type="date"
@@ -86,12 +82,6 @@ export default function Home() {
               Buscar
             </button>
           </form>
-
-          <datalist id="cities-datalist">
-            {ARGENTINE_CITIES.map((city) => (
-              <option key={city} value={city} />
-            ))}
-          </datalist>
 
           {loading && <div className="page-loading">Buscando viajes…</div>}
           {error && <div className="error-banner">{error}</div>}
