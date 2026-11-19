@@ -7,7 +7,7 @@ export default function Navbar() {
   return (
     <header className="navbar">
       <Link to="/" className="navbar__brand">
-        <span className="navbar__brand-mark" aria-hidden="true" />
+        <img src="/logo-mark.png" alt="" className="navbar__logo" />
         Comparte Viaje
       </Link>
 
